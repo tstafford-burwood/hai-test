@@ -1,0 +1,38 @@
+timeout: 1200s
+
+steps:
+- id: Create .netrc file
+  name: 'us-central1-docker.pkg.dev/looker-automation-371722/ldeploy-custom/ldeploy:latest'
+  dir: 'automation'
+  entrypoint: 'mv'
+  args: ["/root/.netrc",
+    "/builder/home"]
+
+- id: Change file permissions
+  name: 'us-central1-docker.pkg.dev/looker-automation-371722/ldeploy-custom/ldeploy:latest'
+  dir: 'automation'
+  entrypoint: 'chmod'
+  args: ["0600",
+    "/builder/home/.netrc"]
+
+- id: Promote code and migrate content
+  name: 'us-central1-docker.pkg.dev/looker-automation-371722/ldeploy-custom/ldeploy:latest'
+  dir: 'automation'
+  entrypoint: '/bin/bash'
+  args: ["update-content.sh",
+    "${_SOURCE_DOMAIN}",
+    "${_DEST_DOMAIN}",
+    "${_RELEASE_BRANCH_NAME}"]
+  env:
+    - 'BRANCH_NAME=$BRANCH_NAME'
+
+- id: "Copy content files to archive bucket"
+  name: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+  dir: 'automation'
+  entrypoint: /bin/sh
+  args:
+    - '-c'
+    - | 
+        gsutil cp -r ${_RELEASE_BRANCH_NAME}/* gs://looker-content-version-control/${_RELEASE_BRANCH_NAME}
+options:
+  logging: CLOUD_LOGGING_ONLY
